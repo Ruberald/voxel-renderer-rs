@@ -13,14 +13,13 @@ use winit::{
 //use std::f128::consts;
 //use std::f16::consts;
 //use std::f32::consts;
-use std::f64::consts;
 
 
 #[allow(dead_code)]
 pub fn cast_slice<T>(data: &[T]) -> &[u8] {
-    use std::{mem::size_of, slice::from_raw_parts};
+    use std::slice::from_raw_parts;
 
-    unsafe { from_raw_parts(data.as_ptr() as *const u8, data.len() * size_of::<T>()) }
+    unsafe { from_raw_parts(data.as_ptr() as *const u8, std::mem::size_of_val(data)) }
 }
 
 #[allow(dead_code)]
@@ -44,7 +43,7 @@ pub trait Main: 'static + Sized {
 pub fn run<E: Main>(_title: &str) {
     env_logger::init();
 
-    let event_loop = EventLoop::new().unwrap();
+    let event_loop = EventLoop::new().expect("Unable to initialize event loop.");
     event_loop.set_control_flow(ControlFlow::Poll);
 
     let mut app = App::<E> { state: None };
@@ -85,18 +84,18 @@ impl<E: Main> State<E> {
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions::default())
             .await
-            .unwrap();
+            .expect("Unable to initialize instance.");
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor::default(),
                 None, // Trace path
             )
             .await
-            .unwrap();
+            .expect("Unable to initialize adapter.");
 
         let context = Context::new(device, queue);
 
-        let surface = instance.create_surface(window.clone()).unwrap();
+        let surface = instance.create_surface(window.clone()).expect("Unable to initialize surface.");
         let cap = surface.get_capabilities(&adapter);
         //println!("{:?}", cap);
         let surface_format = cap.formats[0];
@@ -123,7 +122,7 @@ impl<E: Main> State<E> {
     fn configure_surface(&self) {
         let surface_config = build_surface_config(&self.surface_format, self.size);
         self.surface
-            .configure(&self.context.device(), &surface_config);
+            .configure(self.context.device(), &surface_config);
     }
 
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -175,7 +174,7 @@ impl<E: Main> ApplicationHandler for App<E> {
         let window = Arc::new(
             event_loop
             .create_window(Window::default_attributes())
-            .unwrap(),
+            .expect("Unable to initialize event window"),
         );
 
         let state = pollster::block_on(State::new(window.clone()));
